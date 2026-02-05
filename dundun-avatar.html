@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>墩墩头像生成器</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { background: #1a1a2e; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 20px; font-family: sans-serif; }
+    #canvas-container { border-radius: 50%; overflow: hidden; box-shadow: 0 0 40px rgba(78,205,196,0.3); }
+    canvas { display: block; }
+    .controls { display: flex; gap: 10px; }
+    button { background: #4ECDC4; color: #1a1a2e; border: none; padding: 10px 20px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: all 0.2s; }
+    button:hover { background: #3dbdb5; transform: translateY(-1px); }
+    .label { color: #666; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div id="canvas-container"></div>
+  <div class="controls">
+    <button onclick="randomize()">🎲 Random</button>
+    <button onclick="saveAvatar()">💾 Save PNG</button>
+  </div>
+  <div class="label">墩墩头像生成器 🐘</div>
+  <script>
+    let seed = 20260205;
+    const S = 400; // canvas size
+    
+    function setup() {
+      let c = createCanvas(S, S);
+      c.parent('canvas-container');
+      noLoop();
+      drawDundun();
+    }
+    
+    function drawDundun() {
+      randomSeed(seed);
+      
+      // Background - soft gradient
+      let bgHue = random(150, 190);
+      for (let y = 0; y < S; y++) {
+        let inter = map(y, 0, S, 0, 1);
+        let c1 = color(bgHue - 10, 40 + inter * 20, 30);
+        let c2 = color(bgHue + 10, 50, 45 + inter * 10);
+        stroke(lerpColor(c1, c2, inter));
+        line(0, y, S, y);
+      }
+      
+      noStroke();
+      
+      // Body color variations
+      let bodyColors = [
+        [78, 205, 196],   // classic teal
+        [255, 230, 109],  // energetic yellow
+        [149, 225, 211],  // calm mint
+        [135, 206, 235],  // thinking blue
+        [221, 160, 221],  // tired lavender
+      ];
+      let bodyCol = bodyColors[floor(random(bodyColors.length))];
+      
+      let cx = S / 2;
+      let cy = S / 2 + 15;
+      let bw = 180;
+      let bh = 155;
+      
+      // Shadow
+      fill(0, 0, 0, 30);
+      ellipse(cx + 3, cy + 5, bw + 4, bh + 4);
+      
+      // Body - rounded square via superellipse
+      fill(bodyCol[0], bodyCol[1], bodyCol[2]);
+      beginShape();
+      for (let a = 0; a < TWO_PI; a += 0.05) {
+        let n = 3.5; // squarish roundness
+        let rx = bw / 2;
+        let ry = bh / 2;
+        let x = cx + pow(abs(cos(a)), 2/n) * rx * (cos(a) > 0 ? 1 : -1);
+        let y = cy + pow(abs(sin(a)), 2/n) * ry * (sin(a) > 0 ? 1 : -1);
+        vertex(x, y);
+      }
+      endShape(CLOSE);
+      
+      // Inner shadow for depth
+      fill(0, 0, 0, 15);
+      beginShape();
+      for (let a = 0; a < TWO_PI; a += 0.05) {
+        let n = 3.5;
+        let rx = bw / 2 - 5;
+        let ry = bh / 2 - 5;
+        let x = cx + pow(abs(cos(a)), 2/n) * rx * (cos(a) > 0 ? 1 : -1);
+        let y = (cy + 10) + pow(abs(sin(a)), 2/n) * ry * (sin(a) > 0 ? 1 : -1);
+        vertex(x, y);
+      }
+      endShape(CLOSE);
+      
+      // Eyes
+      let eyeSpacing = random(28, 36);
+      let eyeY = cy - random(8, 18);
+      let eyeSize = random(36, 44);
+      
+      // Eye whites
+      fill(255);
+      ellipse(cx - eyeSpacing, eyeY, eyeSize, eyeSize);
+      ellipse(cx + eyeSpacing, eyeY, eyeSize, eyeSize);
+      
+      // Pupils
+      let pupilSize = eyeSize * random(0.35, 0.45);
+      let lookX = random(-3, 3);
+      let lookY = random(-2, 2);
+      fill(26, 26, 46);
+      ellipse(cx - eyeSpacing + lookX, eyeY + lookY, pupilSize, pupilSize);
+      ellipse(cx + eyeSpacing + lookX, eyeY + lookY, pupilSize, pupilSize);
+      
+      // Eye highlights
+      fill(255, 255, 255, 220);
+      let hlSize = pupilSize * 0.4;
+      ellipse(cx - eyeSpacing + lookX + 4, eyeY + lookY - 4, hlSize, hlSize);
+      ellipse(cx + eyeSpacing + lookX + 4, eyeY + lookY - 4, hlSize, hlSize);
+      
+      // Small secondary highlight
+      fill(255, 255, 255, 150);
+      ellipse(cx - eyeSpacing + lookX - 3, eyeY + lookY + 3, hlSize * 0.5, hlSize * 0.5);
+      ellipse(cx + eyeSpacing + lookX - 3, eyeY + lookY + 3, hlSize * 0.5, hlSize * 0.5);
+      
+      // Mouth - random expression
+      let mouthType = floor(random(4));
+      let mouthY = cy + random(25, 35);
+      
+      if (mouthType === 0) {
+        // Happy smile
+        noFill();
+        stroke(26, 26, 46);
+        strokeWeight(3.5);
+        arc(cx, mouthY - 5, 30, 18, 0.1, PI - 0.1);
+        noStroke();
+      } else if (mouthType === 1) {
+        // Big grin
+        fill(26, 26, 46);
+        arc(cx, mouthY - 2, 34, 22, 0, PI, CHORD);
+      } else if (mouthType === 2) {
+        // Small o
+        fill(26, 26, 46);
+        ellipse(cx, mouthY, 14, 14);
+      } else {
+        // Gentle line
+        noFill();
+        stroke(26, 26, 46);
+        strokeWeight(3);
+        line(cx - 10, mouthY, cx + 10, mouthY);
+        noStroke();
+      }
+      
+      // Blush
+      if (mouthType <= 1) {
+        fill(255, 150, 150, random(40, 80));
+        noStroke();
+        ellipse(cx - eyeSpacing - 12, eyeY + 22, 22, 14);
+        ellipse(cx + eyeSpacing + 12, eyeY + 22, 22, 14);
+      }
+      
+      // Occasional accessories
+      let accessory = floor(random(5));
+      if (accessory === 0) {
+        // Tiny star
+        fill(255, 230, 100, 200);
+        drawStar(cx + bw/2 - 15, cy - bh/2 + 20, 6, 12, 5);
+      } else if (accessory === 1) {
+        // Heart
+        fill(255, 120, 120, 180);
+        drawHeart(cx + bw/2 - 20, cy - bh/2 + 25, 14);
+      }
+    }
+    
+    function drawStar(x, y, r1, r2, n) {
+      beginShape();
+      for (let i = 0; i < n * 2; i++) {
+        let angle = (TWO_PI / (n * 2)) * i - HALF_PI;
+        let r = (i % 2 === 0) ? r2 : r1;
+        vertex(x + cos(angle) * r, y + sin(angle) * r);
+      }
+      endShape(CLOSE);
+    }
+    
+    function drawHeart(x, y, s) {
+      beginShape();
+      for (let a = 0; a < TWO_PI; a += 0.1) {
+        let r = s;
+        let hx = x + r * 16 * pow(sin(a), 3) / 16;
+        let hy = y - r * (13 * cos(a) - 5 * cos(2*a) - 2 * cos(3*a) - cos(4*a)) / 16;
+        vertex(hx, hy);
+      }
+      endShape(CLOSE);
+    }
+    
+    function randomize() {
+      seed = floor(random(999999));
+      drawDundun();
+    }
+    
+    function saveAvatar() {
+      saveCanvas('dundun-avatar-' + seed, 'png');
+    }
+  </script>
+</body>
+</html>
