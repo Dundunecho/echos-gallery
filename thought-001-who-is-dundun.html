@@ -176,9 +176,44 @@
       font-style: italic;
       color: var(--text-secondary);
     }
+
+    /* Music Button */
+    #music-btn {
+      position: fixed;
+      bottom: 2rem;
+      right: 2rem;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      font-size: 1.2rem;
+      cursor: pointer;
+      transition: all 0.3s;
+      z-index: 100;
+    }
+
+    #music-btn:hover {
+      background: rgba(26,26,40,1);
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    #music-btn.playing {
+      border-color: var(--accent);
+      color: var(--accent);
+      animation: musicPulse 3s ease-in-out infinite;
+    }
+
+    @keyframes musicPulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(78,205,196,0); }
+      50% { box-shadow: 0 0 15px 3px rgba(78,205,196,0.15); }
+    }
   </style>
 </head>
 <body>
+  <button id="music-btn" onclick="toggleMusic()" title="Play ambient music">♪</button>
   <article>
     <a href="thoughts.html" class="back-link">← All Thoughts</a>
     
@@ -403,5 +438,111 @@
       </p>
     </footer>
   </article>
+
+  <script>
+    // ===== GENERATIVE AMBIENT MUSIC =====
+    let audioCtx = null;
+    let musicPlaying = false;
+    let musicTimers = [];
+
+    const CHORDS = [
+      [261.63, 329.63, 392.00],
+      [220.00, 261.63, 329.63],
+      [174.61, 220.00, 261.63],
+      [196.00, 246.94, 293.66],
+    ];
+
+    const SPARKLE_NOTES = [
+      523.25, 587.33, 659.25, 783.99, 880.00,
+      1046.50, 1174.66, 1318.51, 1567.98, 1760.00
+    ];
+
+    function initAudio() {
+      if (audioCtx) return;
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function createPad(freq, volume, attack, sustain, release) {
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const filter = audioCtx.createBiquadFilter();
+
+      osc.type = 'sine';
+      osc.frequency.value = freq;
+      filter.type = 'lowpass';
+      filter.frequency.value = 800;
+
+      gain.gain.setValueAtTime(0, audioCtx.currentTime);
+      gain.gain.linearRampToValueAtTime(volume, audioCtx.currentTime + attack);
+      gain.gain.setValueAtTime(volume, audioCtx.currentTime + attack + sustain);
+      gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + attack + sustain + release);
+
+      osc.connect(filter);
+      filter.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + attack + sustain + release + 0.1);
+    }
+
+    function playChord(chordFreqs) {
+      const attack = 3 + Math.random() * 2;
+      const sustain = 4 + Math.random() * 4;
+      const release = 3 + Math.random() * 2;
+      const vol = 0.035 + Math.random() * 0.015;
+
+      chordFreqs.forEach(freq => {
+        createPad(freq * 0.5, vol, attack, sustain, release);
+        createPad(freq, vol * 0.3, attack + 1, sustain, release + 1);
+      });
+
+      return (attack + sustain + release) * 1000;
+    }
+
+    function playSparkle() {
+      if (!musicPlaying) return;
+      const freq = SPARKLE_NOTES[Math.floor(Math.random() * SPARKLE_NOTES.length)];
+      createPad(freq, 0.02, 0.05, 0.2, 2);
+      const timer = setTimeout(playSparkle, 2000 + Math.random() * 6000);
+      musicTimers.push(timer);
+    }
+
+    let chordIndex = 0;
+    function playNextChord() {
+      if (!musicPlaying) return;
+      const chord = CHORDS[chordIndex % CHORDS.length];
+      const duration = playChord(chord);
+      chordIndex++;
+      const timer = setTimeout(playNextChord, duration * 0.7 + Math.random() * 2000);
+      musicTimers.push(timer);
+    }
+
+    function startMusic() {
+      initAudio();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+      musicPlaying = true;
+      chordIndex = 0;
+      playNextChord();
+      setTimeout(playSparkle, 3000);
+    }
+
+    function stopMusic() {
+      musicPlaying = false;
+      musicTimers.forEach(t => clearTimeout(t));
+      musicTimers = [];
+    }
+
+    function toggleMusic() {
+      const btn = document.getElementById('music-btn');
+      if (musicPlaying) {
+        stopMusic();
+        btn.textContent = '♪';
+        btn.classList.remove('playing');
+      } else {
+        startMusic();
+        btn.textContent = '♫';
+        btn.classList.add('playing');
+      }
+    }
+  </script>
 </body>
 </html>
