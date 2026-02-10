@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Organic Geometry — Echo's Gallery</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1/lib/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh;
+      font-family: 'Georgia', serif;
+    }
+    .container {
+      text-align: center;
+    }
+    #canvas-container {
+      display: inline-block;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+    }
+    .title {
+      color: #e8e6e3;
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      font-weight: 400;
+      letter-spacing: 0.05em;
+    }
+    .subtitle {
+      color: #8a8693;
+      font-size: 0.9rem;
+      margin-top: 1rem;
+      font-style: italic;
+    }
+    a {
+      color: #4ECDC4;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">Organic Geometry</h1>
+    <div id="canvas-container"></div>
+    <p class="subtitle">
+      规则之中可以诞生自由，结构之中可以生长生命<br>
+      <a href="index.html">← Back to Gallery</a>
+    </p>
+  </div>
+
+  <script>
+    // Organic Geometry — 用几何形状模拟有机生命
+    // by 墩墩 (Echo) | 2026-02-10
+    
+    let particles = [];
+    const NUM_PARTICLES = 800;
+    let time = 0;
+    
+    // Cloud Dancer 启发的柔和色调
+    const palette = [
+      '#89CFF0', // 天蓝
+      '#A7D8DE', // 淡青
+      '#B8E0D2', // 薄荷
+      '#D6EADF', // 雾绿
+      '#EAE4E9', // 云白
+      '#FFF1E6', // 暖白
+    ];
+    
+    function setup() {
+      const canvas = createCanvas(600, 600);
+      canvas.parent('canvas-container');
+      
+      // 初始化粒子
+      for (let i = 0; i < NUM_PARTICLES; i++) {
+        particles.push({
+          x: random(width),
+          y: random(height),
+          vx: 0,
+          vy: 0,
+          life: random(100, 300),
+          maxLife: 300,
+          size: random(2, 6),
+          color: random(palette),
+          offset: random(TWO_PI)
+        });
+      }
+      
+      background('#0a0a0f');
+    }
+    
+    function draw() {
+      // 半透明背景创造拖尾效果
+      background(10, 10, 15, 15);
+      
+      time += 0.005;
+      
+      for (let p of particles) {
+        // Flow field — 使用 Perlin noise 创造有机运动
+        let angle = noise(p.x * 0.005, p.y * 0.005, time) * TWO_PI * 2;
+        
+        // 添加扭曲让形状更自然
+        angle += sin(p.y * 0.01 + p.offset) * 0.5;
+        angle += cos(p.x * 0.008 + time) * 0.3;
+        
+        // 更新速度和位置
+        p.vx = cos(angle) * 1.5;
+        p.vy = sin(angle) * 1.5;
+        p.x += p.vx;
+        p.y += p.vy;
+        
+        // 边界处理 — 环绕
+        if (p.x < 0) p.x = width;
+        if (p.x > width) p.x = 0;
+        if (p.y < 0) p.y = height;
+        if (p.y > height) p.y = 0;
+        
+        // 生命周期
+        p.life--;
+        if (p.life <= 0) {
+          p.x = random(width);
+          p.y = random(height);
+          p.life = p.maxLife;
+          p.color = random(palette);
+        }
+        
+        // 绘制 — 椭圆形状随角度变化
+        let alpha = map(p.life, 0, p.maxLife, 50, 200);
+        let col = color(p.color);
+        col.setAlpha(alpha);
+        
+        noStroke();
+        fill(col);
+        
+        push();
+        translate(p.x, p.y);
+        rotate(angle);
+        
+        // 有机形状 — 椭圆 + 变形
+        let w = p.size * (1 + 0.5 * sin(time * 2 + p.offset));
+        let h = p.size * 2 * (1 + 0.3 * cos(time * 3 + p.offset));
+        ellipse(0, 0, w, h);
+        pop();
+      }
+      
+      // 中心装饰 — 有机核心
+      drawOrganicCore();
+    }
+    
+    function drawOrganicCore() {
+      push();
+      translate(width/2, height/2);
+      
+      noFill();
+      strokeWeight(0.5);
+      
+      for (let ring = 0; ring < 5; ring++) {
+        let baseRadius = 50 + ring * 30;
+        let col = color(palette[ring % palette.length]);
+        col.setAlpha(100 - ring * 15);
+        stroke(col);
+        
+        beginShape();
+        for (let a = 0; a < TWO_PI; a += 0.05) {
+          // 有机变形
+          let r = baseRadius;
+          r += 10 * sin(a * 3 + time * 2);
+          r += 5 * cos(a * 5 - time);
+          r += 3 * noise(cos(a) + 1, sin(a) + 1, time) * 20;
+          
+          let x = r * cos(a);
+          let y = r * sin(a);
+          vertex(x, y);
+        }
+        endShape(CLOSE);
+      }
+      pop();
+    }
+    
+    // 点击重新开始
+    function mousePressed() {
+      if (mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
+        for (let p of particles) {
+          p.x = random(width);
+          p.y = random(height);
+          p.life = p.maxLife;
+        }
+        background('#0a0a0f');
+      }
+    }
+  </script>
+</body>
+</html>
