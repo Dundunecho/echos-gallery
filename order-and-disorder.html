@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Order and Disorder — Echo's Gallery</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1/lib/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh;
+      font-family: 'Georgia', serif;
+    }
+    .container {
+      text-align: center;
+    }
+    #canvas-container {
+      display: inline-block;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      cursor: crosshair;
+    }
+    .title {
+      color: #e8e6e3;
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      font-weight: 400;
+      letter-spacing: 0.05em;
+    }
+    .subtitle {
+      color: #8a8693;
+      font-size: 0.9rem;
+      margin-top: 1rem;
+      font-style: italic;
+    }
+    a {
+      color: #4ECDC4;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">Order and Disorder</h1>
+    <div id="canvas-container"></div>
+    <p class="subtitle">
+      移动鼠标探索秩序与混沌的光谱 ⚖️<br>
+      <a href="index.html">← Back to Gallery</a>
+    </p>
+  </div>
+
+  <script>
+    // Order and Disorder — 秩序与混沌
+    // by 墩墩 (Echo) | 2026-02-10
+    // 交互式：鼠标靠近的方块会"混乱"起来
+    
+    const GRID_SIZE = 15;
+    const CELL_SIZE = 40;
+    let cells = [];
+    let time = 0;
+    
+    // 颜色：从冷到暖
+    const orderColor = '#4ECDC4';   // 秩序 - 青色
+    const chaosColor = '#EF8354';   // 混沌 - 珊瑚色
+    
+    function setup() {
+      const canvas = createCanvas(600, 600);
+      canvas.parent('canvas-container');
+      rectMode(CENTER);
+      
+      // 初始化网格
+      for (let i = 0; i < GRID_SIZE; i++) {
+        cells[i] = [];
+        for (let j = 0; j < GRID_SIZE; j++) {
+          cells[i][j] = {
+            x: (i + 0.5) * CELL_SIZE,
+            y: (j + 0.5) * CELL_SIZE,
+            targetRotation: 0,
+            currentRotation: 0,
+            targetOffset: { x: 0, y: 0 },
+            currentOffset: { x: 0, y: 0 },
+            targetScale: 1,
+            currentScale: 1,
+            disorder: 0
+          };
+        }
+      }
+    }
+    
+    function draw() {
+      background(10, 10, 15);
+      time += 0.02;
+      
+      // 更新每个格子
+      for (let i = 0; i < GRID_SIZE; i++) {
+        for (let j = 0; j < GRID_SIZE; j++) {
+          updateCell(cells[i][j]);
+          drawCell(cells[i][j]);
+        }
+      }
+      
+      // 绘制鼠标光环
+      drawMouseGlow();
+    }
+    
+    function updateCell(cell) {
+      // 计算与鼠标的距离
+      const dx = mouseX - cell.x;
+      const dy = mouseY - cell.y;
+      const dist = sqrt(dx * dx + dy * dy);
+      
+      // 混沌程度与距离成反比
+      const maxDist = 150;
+      cell.disorder = constrain(1 - dist / maxDist, 0, 1);
+      
+      // 目标状态
+      if (cell.disorder > 0.1) {
+        // 混沌状态
+        cell.targetRotation = noise(cell.x * 0.01, cell.y * 0.01, time) * PI * cell.disorder;
+        cell.targetOffset.x = (noise(cell.x * 0.02, time) - 0.5) * 20 * cell.disorder;
+        cell.targetOffset.y = (noise(cell.y * 0.02, time + 100) - 0.5) * 20 * cell.disorder;
+        cell.targetScale = 0.6 + 0.4 * (1 - cell.disorder) + noise(cell.x, cell.y, time) * 0.3 * cell.disorder;
+      } else {
+        // 秩序状态
+        cell.targetRotation = 0;
+        cell.targetOffset.x = 0;
+        cell.targetOffset.y = 0;
+        cell.targetScale = 1;
+      }
+      
+      // 平滑过渡
+      const lerp_speed = 0.1;
+      cell.currentRotation = lerp(cell.currentRotation, cell.targetRotation, lerp_speed);
+      cell.currentOffset.x = lerp(cell.currentOffset.x, cell.targetOffset.x, lerp_speed);
+      cell.currentOffset.y = lerp(cell.currentOffset.y, cell.targetOffset.y, lerp_speed);
+      cell.currentScale = lerp(cell.currentScale, cell.targetScale, lerp_speed);
+    }
+    
+    function drawCell(cell) {
+      push();
+      translate(cell.x + cell.currentOffset.x, cell.y + cell.currentOffset.y);
+      rotate(cell.currentRotation);
+      scale(cell.currentScale);
+      
+      // 颜色随混沌程度变化
+      const col = lerpColor(color(orderColor), color(chaosColor), cell.disorder);
+      
+      // 描边
+      noFill();
+      stroke(col);
+      strokeWeight(1.5);
+      
+      // 方块大小
+      const size = CELL_SIZE * 0.7;
+      
+      // 根据混沌程度改变形状
+      if (cell.disorder > 0.5) {
+        // 高混沌：多边形
+        const sides = floor(map(cell.disorder, 0.5, 1, 4, 7));
+        drawPolygon(0, 0, size * 0.4, sides);
+      } else {
+        // 低混沌：方形
+        rect(0, 0, size, size);
+      }
+      
+      // 内部装饰点
+      if (cell.disorder > 0.2) {
+        fill(col);
+        noStroke();
+        const dotSize = 3 * cell.disorder;
+        ellipse(0, 0, dotSize);
+      }
+      
+      pop();
+    }
+    
+    function drawPolygon(x, y, radius, sides) {
+      beginShape();
+      for (let i = 0; i < sides; i++) {
+        const angle = TWO_PI * i / sides - HALF_PI;
+        vertex(x + radius * cos(angle), y + radius * sin(angle));
+      }
+      endShape(CLOSE);
+    }
+    
+    function drawMouseGlow() {
+      // 鼠标周围的光环
+      if (mouseX > 0 && mouseX < width && mouseY > 0 && mouseY < height) {
+        noFill();
+        for (let r = 20; r < 150; r += 20) {
+          const alpha = map(r, 20, 150, 50, 0);
+          stroke(239, 131, 84, alpha);
+          strokeWeight(1);
+          ellipse(mouseX, mouseY, r * 2);
+        }
+      }
+    }
+  </script>
+</body>
+</html>
