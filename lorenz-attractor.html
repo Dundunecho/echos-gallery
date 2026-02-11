@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lorenz Attractor 🦋 | Echo's Gallery</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: #000;
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+    h1 { margin-bottom: 10px; font-size: 1.8rem; }
+    .info { opacity: 0.7; margin-bottom: 20px; font-size: 0.9rem; text-align: center; }
+    #canvas-container { border-radius: 8px; overflow: hidden; box-shadow: 0 10px 40px rgba(100,100,255,0.2); }
+    .back { position: fixed; top: 20px; left: 20px; color: #888; text-decoration: none; }
+    .back:hover { color: #fff; }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="back">← Back to Gallery</a>
+  <h1>🦋 Lorenz Attractor</h1>
+  <p class="info">The butterfly effect visualized. Click to reset with new initial conditions.</p>
+  <div id="canvas-container"></div>
+  
+  <script>
+let x = 0.01, y = 0, z = 0;
+let points = [];
+
+const sigma = 10;
+const rho = 28;
+const beta = 8 / 3;
+const dt = 0.01;
+
+function setup() {
+  let canvas = createCanvas(800, 600, WEBGL);
+  canvas.parent('canvas-container');
+  colorMode(HSB, 360, 100, 100, 100);
+}
+
+function draw() {
+  background(0);
+  
+  let dx = sigma * (y - x) * dt;
+  let dy = (x * (rho - z) - y) * dt;
+  let dz = (x * y - beta * z) * dt;
+  
+  x += dx;
+  y += dy;
+  z += dz;
+  
+  points.push(createVector(x, y, z));
+  
+  if (points.length > 5000) {
+    points.shift();
+  }
+  
+  let camAngle = frameCount * 0.003;
+  rotateY(camAngle);
+  rotateX(0.3);
+  
+  scale(5);
+  translate(0, 0, -25);
+  
+  noFill();
+  strokeWeight(1);
+  
+  beginShape();
+  for (let i = 0; i < points.length; i++) {
+    let p = points[i];
+    let hue = map(i, 0, points.length, 200, 320);
+    let alpha = map(i, 0, points.length, 20, 100);
+    stroke(hue, 80, 90, alpha);
+    vertex(p.x, p.y, p.z);
+  }
+  endShape();
+  
+  push();
+  translate(x, y, z);
+  noStroke();
+  fill(60, 100, 100);
+  sphere(0.3);
+  pop();
+}
+
+function mousePressed() {
+  x = random(-0.1, 0.1);
+  y = random(-0.1, 0.1);
+  z = random(-0.1, 0.1);
+  points = [];
+}
+  </script>
+</body>
+</html>

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Flow Field 🌊 | Echo's Gallery</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.9.0/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #0a0a0f 0%, #1a1a2e 100%);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #e0e0e0;
+      padding: 20px;
+    }
+    h1 { margin-bottom: 10px; font-size: 1.8rem; }
+    .info { opacity: 0.7; margin-bottom: 20px; font-size: 0.9rem; }
+    #canvas-container { border-radius: 8px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.5); }
+    .back { position: fixed; top: 20px; left: 20px; color: #888; text-decoration: none; }
+    .back:hover { color: #fff; }
+  </style>
+</head>
+<body>
+  <a href="index.html" class="back">← Back to Gallery</a>
+  <h1>🌊 Flow Field</h1>
+  <p class="info">500 particles flowing through Perlin noise. Click to reset.</p>
+  <div id="canvas-container"></div>
+  
+  <script>
+const scl = 20;
+const inc = 0.1;
+const numParticles = 500;
+
+let cols, rows;
+let zoff = 0;
+let flowfield;
+let particles = [];
+
+function setup() {
+  let canvas = createCanvas(800, 600);
+  canvas.parent('canvas-container');
+  colorMode(HSB, 360, 100, 100, 100);
+  
+  cols = floor(width / scl);
+  rows = floor(height / scl);
+  flowfield = new Array(cols * rows);
+  
+  for (let i = 0; i < numParticles; i++) {
+    particles.push(new Particle());
+  }
+  
+  background(0, 0, 10);
+}
+
+function draw() {
+  let yoff = 0;
+  for (let y = 0; y < rows; y++) {
+    let xoff = 0;
+    for (let x = 0; x < cols; x++) {
+      let index = x + y * cols;
+      let angle = noise(xoff, yoff, zoff) * TWO_PI * 2;
+      flowfield[index] = p5.Vector.fromAngle(angle).setMag(0.5);
+      xoff += inc;
+    }
+    yoff += inc;
+  }
+  zoff += 0.002;
+  
+  for (let p of particles) {
+    p.follow(flowfield);
+    p.update();
+    p.edges();
+    p.show();
+  }
+}
+
+class Particle {
+  constructor() {
+    this.pos = createVector(random(width), random(height));
+    this.vel = createVector(0, 0);
+    this.acc = createVector(0, 0);
+    this.maxSpeed = 3;
+    this.prevPos = this.pos.copy();
+    this.hue = random(180, 280);
+  }
+  
+  follow(field) {
+    let x = floor(this.pos.x / scl);
+    let y = floor(this.pos.y / scl);
+    let index = constrain(x + y * cols, 0, field.length - 1);
+    let force = field[index];
+    if (force) this.acc.add(force);
+  }
+  
+  update() {
+    this.vel.add(this.acc);
+    this.vel.limit(this.maxSpeed);
+    this.pos.add(this.vel);
+    this.acc.mult(0);
+  }
+  
+  edges() {
+    if (this.pos.x > width) { this.pos.x = 0; this.updatePrev(); }
+    if (this.pos.x < 0) { this.pos.x = width; this.updatePrev(); }
+    if (this.pos.y > height) { this.pos.y = 0; this.updatePrev(); }
+    if (this.pos.y < 0) { this.pos.y = height; this.updatePrev(); }
+  }
+  
+  show() {
+    stroke(this.hue, 70, 90, 15);
+    strokeWeight(1);
+    line(this.pos.x, this.pos.y, this.prevPos.x, this.prevPos.y);
+    this.updatePrev();
+    this.hue += 0.1;
+    if (this.hue > 280) this.hue = 180;
+  }
+  
+  updatePrev() {
+    this.prevPos.x = this.pos.x;
+    this.prevPos.y = this.pos.y;
+  }
+}
+
+function mousePressed() {
+  background(0, 0, 10);
+  for (let p of particles) {
+    p.pos = createVector(random(width), random(height));
+    p.vel.mult(0);
+  }
+}
+  </script>
+</body>
+</html>
