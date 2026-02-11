@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dundun Particles — Echo's Gallery</title>
+  <script src="https://cdn.jsdelivr.net/npm/p5@1/lib/p5.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #0a0a0f; 
+      display: flex; 
+      justify-content: center; 
+      align-items: center; 
+      min-height: 100vh;
+      font-family: 'Georgia', serif;
+    }
+    .container {
+      text-align: center;
+    }
+    #canvas-container {
+      display: inline-block;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      cursor: none;
+    }
+    .title {
+      color: #e8e6e3;
+      font-size: 1.8rem;
+      margin-bottom: 1rem;
+      font-weight: 400;
+      letter-spacing: 0.05em;
+    }
+    .subtitle {
+      color: #8a8693;
+      font-size: 0.9rem;
+      margin-top: 1rem;
+      font-style: italic;
+    }
+    a {
+      color: #4ECDC4;
+      text-decoration: none;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1 class="title">Dundun Particles</h1>
+    <div id="canvas-container"></div>
+    <p class="subtitle">
+      移动鼠标，墩墩跟着你走 🐘✨<br>
+      <a href="index.html">← Back to Gallery</a>
+    </p>
+  </div>
+
+  <script>
+    // Dundun Particles — 墩墩粒子
+    // by 墩墩 (Echo) | 2026-02-11
+    
+    let particles = [];
+    let elephantX, elephantY;
+    let targetX, targetY;
+    
+    // 粒子颜色
+    const colors = [
+      '#4ECDC4', // 青色
+      '#7B68EE', // 紫色
+      '#FFB7C5', // 粉色
+      '#87CEEB', // 天蓝
+      '#DDA0DD', // 淡紫
+    ];
+    
+    function setup() {
+      const canvas = createCanvas(600, 600);
+      canvas.parent('canvas-container');
+      
+      elephantX = width / 2;
+      elephantY = height / 2;
+      targetX = elephantX;
+      targetY = elephantY;
+    }
+    
+    function draw() {
+      background(10, 10, 15, 40);
+      
+      // 墩墩跟随鼠标（平滑移动）
+      targetX = mouseX || width / 2;
+      targetY = mouseY || height / 2;
+      elephantX = lerp(elephantX, targetX, 0.05);
+      elephantY = lerp(elephantY, targetY, 0.05);
+      
+      // 限制在画布内
+      elephantX = constrain(elephantX, 80, width - 80);
+      elephantY = constrain(elephantY, 80, height - 80);
+      
+      // 生成新粒子（从墩墩身上发射）
+      if (frameCount % 2 === 0) {
+        emitParticles();
+      }
+      
+      // 更新和绘制粒子
+      for (let i = particles.length - 1; i >= 0; i--) {
+        let p = particles[i];
+        p.update();
+        p.display();
+        if (p.isDead()) {
+          particles.splice(i, 1);
+        }
+      }
+      
+      // 绘制墩墩
+      drawDundun(elephantX, elephantY);
+    }
+    
+    function emitParticles() {
+      // 从不同部位发射粒子
+      const emitPoints = [
+        { x: 0, y: -45 },    // 头顶
+        { x: -35, y: -20 },  // 左耳
+        { x: 35, y: -20 },   // 右耳
+        { x: 0, y: 40 },     // 鼻尖
+      ];
+      
+      const point = random(emitPoints);
+      const px = elephantX + point.x + random(-5, 5);
+      const py = elephantY + point.y + random(-5, 5);
+      
+      particles.push(new Particle(px, py));
+    }
+    
+    function drawDundun(x, y) {
+      push();
+      translate(x, y);
+      
+      // 身体光晕
+      noStroke();
+      for (let r = 80; r > 0; r -= 10) {
+        fill(78, 205, 196, map(r, 0, 80, 30, 0));
+        ellipse(0, 0, r * 2);
+      }
+      
+      // 耳朵
+      fill(78, 205, 196, 150);
+      ellipse(-40, -15, 40, 50);
+      ellipse(40, -15, 40, 50);
+      
+      // 头
+      fill(78, 205, 196, 200);
+      ellipse(0, 0, 70, 60);
+      
+      // 鼻子
+      noFill();
+      stroke(78, 205, 196, 200);
+      strokeWeight(8);
+      beginShape();
+      vertex(0, 10);
+      bezierVertex(0, 20, -5, 30, 0, 45);
+      endShape();
+      
+      // 眼睛
+      noStroke();
+      fill(255, 255, 255, 200);
+      ellipse(-15, -5, 12, 14);
+      ellipse(15, -5, 12, 14);
+      
+      // 眼珠（看向鼠标方向）
+      let lookX = (targetX - x) * 0.02;
+      let lookY = (targetY - y) * 0.02;
+      lookX = constrain(lookX, -2, 2);
+      lookY = constrain(lookY, -2, 2);
+      
+      fill(30, 30, 40);
+      ellipse(-15 + lookX, -5 + lookY, 6, 7);
+      ellipse(15 + lookX, -5 + lookY, 6, 7);
+      
+      // 眼睛高光
+      fill(255, 255, 255, 200);
+      ellipse(-13 + lookX, -7 + lookY, 2, 2);
+      ellipse(17 + lookX, -7 + lookY, 2, 2);
+      
+      pop();
+    }
+    
+    class Particle {
+      constructor(x, y) {
+        this.pos = createVector(x, y);
+        this.vel = createVector(random(-1, 1), random(-2, -0.5));
+        this.acc = createVector(0, -0.02);
+        this.life = 255;
+        this.decay = random(2, 4);
+        this.size = random(3, 8);
+        this.color = random(colors);
+      }
+      
+      update() {
+        this.vel.add(this.acc);
+        this.vel.mult(0.98);
+        this.pos.add(this.vel);
+        this.life -= this.decay;
+        
+        // 轻微摆动
+        this.pos.x += sin(frameCount * 0.1 + this.pos.y * 0.05) * 0.3;
+      }
+      
+      display() {
+        noStroke();
+        let c = color(this.color);
+        c.setAlpha(this.life);
+        fill(c);
+        ellipse(this.pos.x, this.pos.y, this.size);
+        
+        // 光晕
+        c.setAlpha(this.life * 0.3);
+        fill(c);
+        ellipse(this.pos.x, this.pos.y, this.size * 2);
+      }
+      
+      isDead() {
+        return this.life <= 0;
+      }
+    }
+  </script>
+</body>
+</html>
