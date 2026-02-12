@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recursive Grid - Echo's Gallery No.012</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #0a0a0f; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh;
+            font-family: 'Courier New', monospace;
+        }
+        canvas { 
+            border: 1px solid #333;
+            cursor: crosshair;
+        }
+        .info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: #666;
+            font-size: 12px;
+        }
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #888;
+            font-size: 12px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div class="info">Recursive Grid · No.012 · 🐘</div>
+    <div class="controls">
+        Click: regenerate<br>
+        Space: toggle animation
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        const SIZE = Math.min(window.innerWidth, window.innerHeight) - 40;
+        canvas.width = SIZE;
+        canvas.height = SIZE;
+        
+        let seed = Date.now();
+        let animating = true;
+        let time = 0;
+        
+        // Seeded random
+        function random() {
+            seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+            return seed / 0x7fffffff;
+        }
+        
+        // Color palette - inspired by dreams
+        const palettes = [
+            ['#1a1a2e', '#16213e', '#0f3460', '#e94560', '#ff6b6b'],
+            ['#0d0d0d', '#1a1a2e', '#4a148c', '#7b1fa2', '#ce93d8'],
+            ['#0a192f', '#112240', '#233554', '#64ffda', '#ccd6f6'],
+            ['#1a1a1a', '#2d2d2d', '#3d3d3d', '#00bcd4', '#4dd0e1'],
+        ];
+        
+        let palette;
+        
+        function drawRecursiveGrid(x, y, size, depth, maxDepth) {
+            if (depth > maxDepth || size < 4) return;
+            
+            const shouldDivide = random() < 0.7 - depth * 0.1;
+            const pulse = Math.sin(time * 0.02 + depth * 0.5 + x * 0.01 + y * 0.01);
+            
+            if (!shouldDivide || depth === maxDepth) {
+                // Draw cell
+                const colorIndex = Math.floor(random() * (palette.length - 2)) + 2;
+                const alpha = 0.3 + pulse * 0.2 + random() * 0.3;
+                
+                ctx.fillStyle = palette[colorIndex];
+                ctx.globalAlpha = alpha;
+                
+                const margin = size * 0.08;
+                const innerSize = size - margin * 2;
+                
+                // Different shapes based on random
+                const shapeType = random();
+                
+                if (shapeType < 0.4) {
+                    // Rectangle
+                    ctx.fillRect(x + margin, y + margin, innerSize, innerSize);
+                } else if (shapeType < 0.7) {
+                    // Circle
+                    ctx.beginPath();
+                    ctx.arc(x + size/2, y + size/2, innerSize/2, 0, Math.PI * 2);
+                    ctx.fill();
+                } else if (shapeType < 0.85) {
+                    // Diamond
+                    ctx.beginPath();
+                    ctx.moveTo(x + size/2, y + margin);
+                    ctx.lineTo(x + size - margin, y + size/2);
+                    ctx.lineTo(x + size/2, y + size - margin);
+                    ctx.lineTo(x + margin, y + size/2);
+                    ctx.closePath();
+                    ctx.fill();
+                } else {
+                    // Triangle
+                    ctx.beginPath();
+                    ctx.moveTo(x + size/2, y + margin);
+                    ctx.lineTo(x + size - margin, y + size - margin);
+                    ctx.lineTo(x + margin, y + size - margin);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+                
+                // Border glow
+                if (random() > 0.7) {
+                    ctx.strokeStyle = palette[palette.length - 1];
+                    ctx.globalAlpha = 0.3 + pulse * 0.2;
+                    ctx.lineWidth = 1;
+                    ctx.strokeRect(x + margin, y + margin, innerSize, innerSize);
+                }
+                
+                ctx.globalAlpha = 1;
+            } else {
+                // Divide into smaller grids
+                const divisions = random() < 0.6 ? 2 : (random() < 0.8 ? 3 : 4);
+                const cellSize = size / divisions;
+                
+                for (let i = 0; i < divisions; i++) {
+                    for (let j = 0; j < divisions; j++) {
+                        drawRecursiveGrid(
+                            x + i * cellSize,
+                            y + j * cellSize,
+                            cellSize,
+                            depth + 1,
+                            maxDepth
+                        );
+                    }
+                }
+            }
+        }
+        
+        function draw() {
+            // Background
+            ctx.fillStyle = palette[0];
+            ctx.fillRect(0, 0, SIZE, SIZE);
+            
+            // Reset seed for consistent pattern
+            seed = Math.floor(Date.now() / 5000) * 5000; // Changes every 5 seconds
+            
+            // Draw recursive grid
+            drawRecursiveGrid(0, 0, SIZE, 0, 5);
+            
+            // Vignette
+            const gradient = ctx.createRadialGradient(SIZE/2, SIZE/2, SIZE/4, SIZE/2, SIZE/2, SIZE/1.2);
+            gradient.addColorStop(0, 'transparent');
+            gradient.addColorStop(1, 'rgba(0,0,0,0.6)');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, SIZE, SIZE);
+        }
+        
+        function animate() {
+            if (animating) {
+                time++;
+                draw();
+            }
+            requestAnimationFrame(animate);
+        }
+        
+        // Initialize
+        palette = palettes[Math.floor(Math.random() * palettes.length)];
+        draw();
+        animate();
+        
+        // Interactions
+        canvas.addEventListener('click', () => {
+            seed = Date.now();
+            palette = palettes[Math.floor(Math.random() * palettes.length)];
+            draw();
+        });
+        
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space') {
+                animating = !animating;
+                e.preventDefault();
+            }
+        });
+    </script>
+</body>
+</html>
