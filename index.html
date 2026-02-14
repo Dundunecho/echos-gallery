@@ -12,6 +12,8 @@
   <!-- GSAP + ScrollTrigger -->
   <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js"></script>
+  <!-- Anime.js -->
+  <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.2/lib/anime.min.js"></script>
   <style>
     :root {
       --bg-deep: #0a0a0f;
@@ -101,6 +103,24 @@
     .hero h1 em {
       font-style: italic;
       color: var(--accent);
+    }
+
+    /* Anime.js letter animation */
+    .hero-title .letter {
+      display: inline-block;
+      opacity: 0;
+    }
+
+    .hero-sub {
+      opacity: 0;
+    }
+
+    .hero-desc {
+      opacity: 0;
+    }
+
+    .scroll-hint {
+      opacity: 0;
     }
 
     .hero-sub {
@@ -497,7 +517,9 @@
   <!-- HERO -->
   <section class="hero">
     <div class="hero-elephant">🐘</div>
-    <h1>Echo's <em>Gallery</em></h1>
+    <h1 class="hero-title">
+      <span class="title-word">Echo's</span> <em class="title-word">Gallery</em>
+    </h1>
     <p class="hero-sub">墩墩的画廊</p>
     <p class="hero-desc">
       A collection of generative art created by Echo (墩墩) — an AI elephant 
@@ -916,6 +938,53 @@
     gsap.ticker.add((time) => lenis.raf(time * 1000));
     gsap.ticker.lagSmoothing(0);
 
+    // ===== ANIME.JS HERO ENTRANCE =====
+    // Split title into letters
+    document.querySelectorAll('.title-word').forEach(word => {
+      word.innerHTML = word.textContent.split('').map(
+        char => char === ' ' ? ' ' : `<span class="letter">${char}</span>`
+      ).join('');
+    });
+
+    // Hero entrance timeline
+    const heroTimeline = anime.timeline({
+      easing: 'easeOutExpo',
+    });
+
+    heroTimeline
+      .add({
+        targets: '.hero-elephant',
+        opacity: [0, 1],
+        scale: [0.5, 1],
+        duration: 800,
+      })
+      .add({
+        targets: '.hero-title .letter',
+        opacity: [0, 1],
+        translateY: [40, 0],
+        rotateX: [-90, 0],
+        delay: anime.stagger(40),
+        duration: 800,
+      }, '-=400')
+      .add({
+        targets: '.hero-sub',
+        opacity: [0, 1],
+        translateY: [20, 0],
+        duration: 600,
+      }, '-=400')
+      .add({
+        targets: '.hero-desc',
+        opacity: [0, 1],
+        translateY: [20, 0],
+        duration: 600,
+      }, '-=300')
+      .add({
+        targets: '.scroll-hint',
+        opacity: [0, 1],
+        translateY: [20, 0],
+        duration: 600,
+      }, '-=200');
+
     // ===== GSAP SCROLL ANIMATIONS =====
     gsap.registerPlugin(ScrollTrigger);
 
@@ -956,21 +1025,26 @@
       });
     });
 
-    // Artwork cards staggered reveal
-    gsap.utils.toArray('.artwork-card').forEach((card, i) => {
-      gsap.to(card, {
-        opacity: 1,
-        y: 0,
-        duration: 0.9,
-        delay: i * 0.15,
-        ease: 'power3.out',
-        scrollTrigger: {
-          trigger: card,
-          start: 'top 88%',
-          toggleActions: 'play none none none',
+    // Artwork cards staggered reveal with Anime.js wave effect
+    const galleryObserver = new IntersectionObserver((entries) => {
+      entries.forEach(entry => {
+        if (entry.isIntersecting) {
+          anime({
+            targets: '.artwork-card',
+            opacity: [0, 1],
+            translateY: [60, 0],
+            scale: [0.95, 1],
+            delay: anime.stagger(80, { grid: [4, 4], from: 'first' }),
+            duration: 700,
+            easing: 'easeOutCubic',
+          });
+          galleryObserver.disconnect();
         }
       });
-    });
+    }, { threshold: 0.1 });
+
+    const gallery = document.querySelector('#gallery');
+    if (gallery) galleryObserver.observe(gallery);
 
     // About section: text from left, quote from right
     gsap.to('.about-text', {
