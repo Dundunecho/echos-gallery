@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Transmissive Morphosis — Echo's Gallery</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --anthropic-dark: #141413;
+            --anthropic-light: #faf9f5;
+            --anthropic-mid-gray: #b0aea5;
+            --anthropic-light-gray: #e8e6dc;
+            --anthropic-orange: #d97757;
+            --anthropic-blue: #6a9bcc;
+            --anthropic-green: #788c5d;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--anthropic-light) 0%, #f5f3ee 100%);
+            min-height: 100vh;
+            color: var(--anthropic-dark);
+        }
+        .container { display: flex; min-height: 100vh; padding: 20px; gap: 20px; }
+        .sidebar {
+            width: 320px; flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 24px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(20, 20, 19, 0.1);
+            overflow-y: auto; overflow-x: hidden;
+        }
+        .sidebar h1 { font-family: 'Lora', serif; font-size: 22px; font-weight: 500; color: var(--anthropic-dark); margin-bottom: 4px; }
+        .sidebar .subtitle { color: var(--anthropic-mid-gray); font-size: 13px; margin-bottom: 28px; line-height: 1.5; }
+        .control-section { margin-bottom: 28px; }
+        .control-section h3 {
+            font-size: 15px; font-weight: 600; color: var(--anthropic-dark);
+            margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+        }
+        .control-section h3::before { content: '•'; color: var(--anthropic-orange); font-weight: bold; }
+        .seed-input {
+            width: 100%; background: var(--anthropic-light); padding: 12px;
+            border-radius: 8px; font-family: 'Courier New', monospace;
+            font-size: 14px; margin-bottom: 12px;
+            border: 1px solid var(--anthropic-light-gray); text-align: center;
+        }
+        .seed-input:focus { outline: none; border-color: var(--anthropic-orange); box-shadow: 0 0 0 2px rgba(217, 119, 87, 0.1); background: white; }
+        .seed-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .regen-button { margin-bottom: 0; }
+        .control-group { margin-bottom: 18px; }
+        .control-group label { display: block; font-size: 13px; font-weight: 500; color: var(--anthropic-dark); margin-bottom: 6px; }
+        .slider-container { display: flex; align-items: center; gap: 12px; }
+        .slider-container input[type="range"] {
+            flex: 1; height: 4px; background: var(--anthropic-light-gray);
+            border-radius: 2px; outline: none; -webkit-appearance: none;
+        }
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 16px; height: 16px;
+            background: var(--anthropic-orange); border-radius: 50%;
+            cursor: pointer; transition: all 0.2s ease;
+        }
+        .slider-container input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.1); background: #c86641; }
+        .slider-container input[type="range"]::-moz-range-thumb {
+            width: 16px; height: 16px; background: var(--anthropic-orange);
+            border-radius: 50%; border: none; cursor: pointer;
+        }
+        .value-display { font-family: 'Courier New', monospace; font-size: 12px; color: var(--anthropic-mid-gray); min-width: 50px; text-align: right; }
+        .color-group { margin-bottom: 14px; }
+        .color-group label { display: block; font-size: 12px; color: var(--anthropic-mid-gray); margin-bottom: 4px; }
+        .color-picker-container { display: flex; align-items: center; gap: 8px; }
+        .color-picker-container input[type="color"] { width: 32px; height: 32px; border: none; border-radius: 6px; cursor: pointer; background: none; padding: 0; }
+        .color-value { font-family: 'Courier New', monospace; font-size: 12px; color: var(--anthropic-mid-gray); }
+        .button {
+            background: var(--anthropic-orange); color: white; border: none;
+            padding: 10px 16px; border-radius: 6px; font-size: 14px;
+            font-weight: 500; cursor: pointer; transition: all 0.2s ease; width: 100%;
+        }
+        .button:hover { background: #c86641; transform: translateY(-1px); }
+        .button:active { transform: translateY(0); }
+        .button.secondary { background: var(--anthropic-blue); }
+        .button.secondary:hover { background: #5a8bb8; }
+        .button.tertiary { background: var(--anthropic-green); }
+        .button.tertiary:hover { background: #6b7b52; }
+        .button-row { display: flex; gap: 8px; }
+        .button-row .button { flex: 1; }
+        .canvas-area { flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; }
+        #canvas-container {
+            width: 100%; max-width: 1000px; border-radius: 12px;
+            overflow: hidden; box-shadow: 0 20px 40px rgba(20, 20, 19, 0.1); background: white;
+        }
+        #canvas-container canvas { display: block; width: 100% !important; height: auto !important; }
+        .loading { display: flex; align-items: center; justify-content: center; font-size: 18px; color: var(--anthropic-mid-gray); padding: 40px; }
+        @media (max-width: 600px) {
+            .container { flex-direction: column; }
+            .sidebar { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>Transmissive Morphosis</h1>
+            <div class="subtitle">传递变形 — How transmission changes what is transmitted. A signal passes through concentric rings of listeners, each adding their own voice. Errors become creation.</div>
+
+            <!-- Seed Section -->
+            <div class="control-section">
+                <h3>Seed</h3>
+                <input type="number" id="seed-input" class="seed-input" value="42" onchange="updateSeed()">
+                <div class="seed-controls">
+                    <button class="button secondary" onclick="previousSeed()">← Prev</button>
+                    <button class="button secondary" onclick="nextSeed()">Next →</button>
+                </div>
+                <button class="button tertiary regen-button" onclick="randomSeedAndUpdate()">↻ Random</button>
+            </div>
+
+            <!-- Parameters Section -->
+            <div class="control-section">
+                <h3>Parameters</h3>
+
+                <div class="control-group">
+                    <label>Rings (Transmitters)</label>
+                    <div class="slider-container">
+                        <input type="range" id="ringCount" min="5" max="40" step="1" value="24" oninput="updateParam('ringCount', this.value)">
+                        <span class="value-display" id="ringCount-value">24</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Points per Ring</label>
+                    <div class="slider-container">
+                        <input type="range" id="pointsPerRing" min="60" max="360" step="10" value="200" oninput="updateParam('pointsPerRing', this.value)">
+                        <span class="value-display" id="pointsPerRing-value">200</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Mutation Rate</label>
+                    <div class="slider-container">
+                        <input type="range" id="mutationRate" min="0.01" max="0.5" step="0.01" value="0.18" oninput="updateParam('mutationRate', this.value)">
+                        <span class="value-display" id="mutationRate-value">0.18</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Signal Harmonics</label>
+                    <div class="slider-container">
+                        <input type="range" id="harmonics" min="1" max="8" step="1" value="3" oninput="updateParam('harmonics', this.value)">
+                        <span class="value-display" id="harmonics-value">3</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Signal Amplitude</label>
+                    <div class="slider-container">
+                        <input type="range" id="amplitude" min="5" max="60" step="1" value="35" oninput="updateParam('amplitude', this.value)">
+                        <span class="value-display" id="amplitude-value">35</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Line Weight</label>
+                    <div class="slider-container">
+                        <input type="range" id="lineWeight" min="0.3" max="3.0" step="0.1" value="0.8" oninput="updateParam('lineWeight', this.value)">
+                        <span class="value-display" id="lineWeight-value">0.8</span>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>Opacity</label>
+                    <div class="slider-container">
+                        <input type="range" id="opacity" min="10" max="100" step="5" value="50" oninput="updateParam('opacity', this.value)">
+                        <span class="value-display" id="opacity-value">50</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Colors Section -->
+            <div class="control-section">
+                <h3>Colors</h3>
+                <div class="color-group">
+                    <label>Source (Inner)</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="colorInner" value="#d97757" onchange="updateColor('colorInner', this.value)">
+                        <span class="color-value" id="colorInner-value">#d97757</span>
+                    </div>
+                </div>
+                <div class="color-group">
+                    <label>Mid Transition</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="colorMid" value="#8b6e99" onchange="updateColor('colorMid', this.value)">
+                        <span class="color-value" id="colorMid-value">#8b6e99</span>
+                    </div>
+                </div>
+                <div class="color-group">
+                    <label>Distant (Outer)</label>
+                    <div class="color-picker-container">
+                        <input type="color" id="colorOuter" value="#3d5a80" onchange="updateColor('colorOuter', this.value)">
+                        <span class="color-value" id="colorOuter-value">#3d5a80</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Actions Section -->
+            <div class="control-section">
+                <h3>Actions</h3>
+                <div class="button-row">
+                    <button class="button" onclick="resetParameters()">Reset</button>
+                    <button class="button secondary" onclick="downloadPNG()">↓ PNG</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <div id="canvas-container">
+                <div class="loading">Initializing transmissive morphosis...</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ═══════════════════════════════════════════════════════════════════════
+        // TRANSMISSIVE MORPHOSIS — 传递变形
+        // By Echo (墩墩) — "Are errors in transmission loss or creation?"
+        // ═══════════════════════════════════════════════════════════════════════
+
+        let params = {
+            seed: 42,
+            ringCount: 24,
+            pointsPerRing: 200,
+            mutationRate: 0.18,
+            harmonics: 3,
+            amplitude: 35,
+            lineWeight: 0.8,
+            opacity: 50,
+            colorInner: '#d97757',
+            colorMid: '#8b6e99',
+            colorOuter: '#3d5a80'
+        };
+
+        let defaultParams = JSON.parse(JSON.stringify(params));
+
+        // Ring data: each ring stores its interpreted signal
+        let rings = [];
+        let centerX, centerY;
+        let baseRadius;
+        let ringSpacing;
+
+        function setup() {
+            let canvas = createCanvas(1200, 1200);
+            canvas.parent('canvas-container');
+            document.querySelector('.loading').style.display = 'none';
+            generateArt();
+        }
+
+        function generateArt() {
+            randomSeed(params.seed);
+            noiseSeed(params.seed);
+
+            centerX = width / 2;
+            centerY = height / 2;
+            baseRadius = 60;
+            ringSpacing = (min(width, height) / 2 - baseRadius - 40) / params.ringCount;
+
+            // Generate the original signal (innermost ring)
+            rings = [];
+            let originalSignal = generateOriginalSignal();
+            rings.push(originalSignal);
+
+            // Each subsequent ring "listens" to the previous and retransmits
+            for (let r = 1; r < params.ringCount; r++) {
+                let prevSignal = rings[r - 1];
+                let newSignal = transmit(prevSignal, r);
+                rings.push(newSignal);
+            }
+
+            // Draw
+            renderMandala();
+        }
+
+        function generateOriginalSignal() {
+            // The original message: a clean harmonic waveform
+            let signal = [];
+            for (let i = 0; i < params.pointsPerRing; i++) {
+                let angle = (TWO_PI / params.pointsPerRing) * i;
+                let displacement = 0;
+
+                // Sum of harmonics — the original "message"
+                for (let h = 1; h <= params.harmonics; h++) {
+                    let harmonicAmp = params.amplitude / h;
+                    let phase = random(TWO_PI); // seeded random phase per harmonic
+                    displacement += harmonicAmp * sin(angle * h * 2 + phase);
+                }
+
+                signal.push(displacement);
+            }
+            return signal;
+        }
+
+        function transmit(prevSignal, ringIndex) {
+            // Each transmitter "listens" to the previous signal
+            // and adds its own interpretation (Perlin noise personality)
+            let newSignal = [];
+            let noiseOffsetX = random(1000); // This transmitter's unique "voice"
+            let noiseOffsetY = random(1000);
+
+            // Mutation accumulates with distance from source — exponential drift
+            let mutationStrength = params.mutationRate * pow(ringIndex, 0.85);
+
+            for (let i = 0; i < prevSignal.length; i++) {
+                let received = prevSignal[i];
+
+                // The transmitter's personal noise — their "accent"
+                let angle = (TWO_PI / prevSignal.length) * i;
+                let nx = noiseOffsetX + cos(angle) * 2;
+                let ny = noiseOffsetY + sin(angle) * 2;
+                let personalNoise = (noise(nx, ny, ringIndex * 0.3) - 0.5) * 2;
+
+                // Phase drift: the transmitter slightly shifts timing
+                let phaseShift = floor(random(-2, 3));
+                let shiftedIndex = (i + phaseShift + prevSignal.length) % prevSignal.length;
+                let shiftedReceived = prevSignal[shiftedIndex];
+
+                // The interpretation: original + personal noise + neighbor blending
+                let blendedReceived = received * 0.55 + shiftedReceived * 0.45;
+                let interpretation = blendedReceived + personalNoise * params.amplitude * mutationStrength * 1.5;
+
+                // Subtle amplitude modulation — some transmitters are louder
+                let ampMod = 0.85 + noise(noiseOffsetX + i * 0.05, ringIndex * 0.5) * 0.3;
+                interpretation *= ampMod;
+
+                newSignal.push(interpretation);
+            }
+
+            // Smooth the signal slightly (natural averaging in transmission)
+            return smoothSignal(newSignal, 2);
+        }
+
+        function smoothSignal(signal, passes) {
+            let result = [...signal];
+            for (let p = 0; p < passes; p++) {
+                let smoothed = [];
+                for (let i = 0; i < result.length; i++) {
+                    let prev = result[(i - 1 + result.length) % result.length];
+                    let curr = result[i];
+                    let next = result[(i + 1) % result.length];
+                    smoothed.push(prev * 0.2 + curr * 0.6 + next * 0.2);
+                }
+                result = smoothed;
+            }
+            return result;
+        }
+
+        function renderMandala() {
+            background(250, 249, 245);
+
+            // Parse colors
+            let cInner = color(params.colorInner);
+            let cMid = color(params.colorMid);
+            let cOuter = color(params.colorOuter);
+
+            noFill();
+
+            for (let r = 0; r < rings.length; r++) {
+                let signal = rings[r];
+                let radius = baseRadius + r * ringSpacing;
+                let t = r / max(1, rings.length - 1); // 0 to 1
+
+                // Color interpolation: inner → mid → outer
+                let ringColor;
+                if (t < 0.5) {
+                    ringColor = lerpColor(cInner, cMid, t * 2);
+                } else {
+                    ringColor = lerpColor(cMid, cOuter, (t - 0.5) * 2);
+                }
+
+                // Opacity: inner rings slightly more opaque
+                let alpha = params.opacity + (1 - t) * 20;
+                ringColor.setAlpha(alpha);
+
+                // Line weight: slightly thinner for outer rings
+                let weight = params.lineWeight * (1.0 - t * 0.4);
+                strokeWeight(weight);
+                stroke(ringColor);
+
+                // Draw the ring as a smooth closed curve
+                beginShape();
+                for (let i = 0; i <= signal.length; i++) {
+                    let idx = i % signal.length;
+                    let angle = (TWO_PI / signal.length) * idx;
+                    let displacement = signal[idx];
+                    let px = centerX + cos(angle) * (radius + displacement);
+                    let py = centerY + sin(angle) * (radius + displacement);
+                    curveVertex(px, py);
+                }
+                // Extra vertices for smooth closure
+                for (let i = 0; i < 3; i++) {
+                    let idx = i % signal.length;
+                    let angle = (TWO_PI / signal.length) * idx;
+                    let displacement = signal[idx];
+                    let px = centerX + cos(angle) * (radius + displacement);
+                    let py = centerY + sin(angle) * (radius + displacement);
+                    curveVertex(px, py);
+                }
+                endShape();
+            }
+
+            // Draw a tiny dot at center — the source
+            fill(cInner);
+            noStroke();
+            ellipse(centerX, centerY, 4, 4);
+
+            noLoop();
+        }
+
+        // ═══════════════════════════════════════════════════════════════════════
+        // UI HANDLERS
+        // ═══════════════════════════════════════════════════════════════════════
+
+        function updateParam(paramName, value) {
+            let numVal = parseFloat(value);
+            if (paramName === 'ringCount' || paramName === 'pointsPerRing' || paramName === 'harmonics' || paramName === 'opacity') {
+                numVal = parseInt(value);
+            }
+            params[paramName] = numVal;
+            document.getElementById(paramName + '-value').textContent = value;
+            generateArt();
+        }
+
+        function updateColor(colorId, value) {
+            params[colorId] = value;
+            document.getElementById(colorId + '-value').textContent = value;
+            generateArt();
+        }
+
+        function updateSeedDisplay() {
+            document.getElementById('seed-input').value = params.seed;
+        }
+
+        function updateSeed() {
+            let input = document.getElementById('seed-input');
+            let newSeed = parseInt(input.value);
+            if (newSeed && newSeed > 0) {
+                params.seed = newSeed;
+                generateArt();
+            } else {
+                updateSeedDisplay();
+            }
+        }
+
+        function previousSeed() {
+            params.seed = Math.max(1, params.seed - 1);
+            updateSeedDisplay();
+            generateArt();
+        }
+
+        function nextSeed() {
+            params.seed = params.seed + 1;
+            updateSeedDisplay();
+            generateArt();
+        }
+
+        function randomSeedAndUpdate() {
+            params.seed = Math.floor(Math.random() * 999999) + 1;
+            updateSeedDisplay();
+            generateArt();
+        }
+
+        function resetParameters() {
+            params = JSON.parse(JSON.stringify(defaultParams));
+
+            // Update all UI elements
+            document.getElementById('ringCount').value = params.ringCount;
+            document.getElementById('ringCount-value').textContent = params.ringCount;
+            document.getElementById('pointsPerRing').value = params.pointsPerRing;
+            document.getElementById('pointsPerRing-value').textContent = params.pointsPerRing;
+            document.getElementById('mutationRate').value = params.mutationRate;
+            document.getElementById('mutationRate-value').textContent = params.mutationRate;
+            document.getElementById('harmonics').value = params.harmonics;
+            document.getElementById('harmonics-value').textContent = params.harmonics;
+            document.getElementById('amplitude').value = params.amplitude;
+            document.getElementById('amplitude-value').textContent = params.amplitude;
+            document.getElementById('lineWeight').value = params.lineWeight;
+            document.getElementById('lineWeight-value').textContent = params.lineWeight;
+            document.getElementById('opacity').value = params.opacity;
+            document.getElementById('opacity-value').textContent = params.opacity;
+
+            document.getElementById('colorInner').value = params.colorInner;
+            document.getElementById('colorInner-value').textContent = params.colorInner;
+            document.getElementById('colorMid').value = params.colorMid;
+            document.getElementById('colorMid-value').textContent = params.colorMid;
+            document.getElementById('colorOuter').value = params.colorOuter;
+            document.getElementById('colorOuter-value').textContent = params.colorOuter;
+
+            updateSeedDisplay();
+            generateArt();
+        }
+
+        function downloadPNG() {
+            saveCanvas('transmissive-morphosis-seed-' + params.seed, 'png');
+        }
+
+        window.addEventListener('load', function() {
+            updateSeedDisplay();
+        });
+    </script>
+</body>
+</html>

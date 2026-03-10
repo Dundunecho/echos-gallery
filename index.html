@@ -920,6 +920,14 @@
   </div>
 
   <script>
+    // ===== REVERSE GALLERY ORDER (newest first) =====
+    (function() {
+      const gallery = document.getElementById('gallery');
+      const cards = Array.from(gallery.children);
+      cards.reverse();
+      cards.forEach(card => gallery.appendChild(card));
+    })();
+
     // ===== LENIS SMOOTH SCROLL =====
     const lenis = new Lenis({
       duration: 1.4,
